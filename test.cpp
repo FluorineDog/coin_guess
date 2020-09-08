@@ -150,10 +150,10 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
         setB(i, false);
     }
 
-    auto meta = fetch_meta(iter);
+    auto transaction_size = fetch_meta(iter);
     iter += META_SIZEOF;
     std::vector<int> states;
-    for (auto i: Range(0, meta)) {
+    for (auto i: Range(0, transaction_size)) {
         auto dst_index = iter + i;
         auto src_index = META_SIZEOF + i;
         auto bitB = getA(src_index);
@@ -164,6 +164,8 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
         bitA ^= std_bit;
         states.push_back(3 - bitA - bitB * 2);
     }
+    iter += transaction_size;
+
     auto indicator = mpf_class(0, precision);
     for (auto x: states) {
         if (x < 3) {
@@ -174,12 +176,16 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
             indicator += 3 * Alpha;
         }
     }
+
     std::vector<bool> transaction;
-    for(auto x: Range()) {
-
+    for(auto i: Range(0, transaction_size)) {
+        indicator *= 2;
+        auto bit = indicator.get_ui();
+        indicator -= bit;
+        transaction.push_back(bit);
     }
-
-    auto fuck = indicator.get_d();
+    assert(iter == N);
+    assert(ack == N);
     return seqB;
 }
 
@@ -194,7 +200,7 @@ int main() {
     }
     auto[a, b] = generate_a(N, expected);
     auto vb = verify_b(N, a, expected);
-
+    assert(b == vb);
 }
 
 
