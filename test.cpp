@@ -20,10 +20,6 @@ const auto logBeta = -log2f128(Beta.get_d());
 std::map<int, int> meta_map;
 SeqType* global_b;
 
-std::vector<int> BitToState(SeqType bits) {
-     
-}
-
 std::pair<SeqType, SeqType> generate_a(int N, const SeqType &seq_ans) {
 //    // step 1: generate last bits
 //    int last_bits = 1024 * 4;
@@ -195,12 +191,13 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
                 indicator += 3 * Alpha;
             }
         }
+        indicator = 1 - indicator;
         std::vector<bool> transaction;
         for (auto i: Range(0, transaction_size)) {
             indicator *= 2;
             auto bit = indicator.get_ui();
             indicator -= bit;
-            transaction.push_back(bit);
+            transaction.push_back(!bit);
         }
 
         candidateB.clear();
