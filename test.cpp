@@ -20,13 +20,13 @@ const auto logBeta = -log2f128(Beta.get_d());
 std::map<int, int> meta_map;
 
 //std::map<int, std::vector<bool>> bitmap;
-//SeqType *global_b;
 using std::vector;
 
-std::vector<bool> states2bits(std::vector<int> states, int transaction_size);
+std::vector<bool> states2bits(std::vector<char> states, int transaction_size);
 
-std::vector<int> bits2states(const std::vector<bool> &bits) {
-    std::vector<int> states;
+std::vector<char> bits2states(const std::vector<bool> &bits) {
+    std::vector<char> states;
+    states.reserve(bits.size() * 1.1);
     auto indicator = mpf_class(0, precision);
     // bits is little endian
     for (auto bit: bits) {
@@ -60,7 +60,7 @@ std::vector<int> bits2states(const std::vector<bool> &bits) {
     return states;
 }
 
-std::vector<bool> states2bits(std::vector<int> states, int transaction_size) {
+std::vector<bool> states2bits(std::vector<char> states, int transaction_size) {
     auto indicator = mpf_class(1, precision);
     // states is little endian
     for (auto x: states) {
@@ -74,6 +74,7 @@ std::vector<bool> states2bits(std::vector<int> states, int transaction_size) {
     }
     std::cout << "fetch" << states.size() << "-" << indicator.get_d() << std::endl;
     std::vector<bool> bits;
+    bits.reserve(transaction_size);
     for (auto i: Range(0, transaction_size)) {
         indicator *= 2;
         auto bit = indicator.get_ui();
@@ -99,7 +100,7 @@ std::pair<SeqType, SeqType> generate_a(int N, const SeqType &seq_ans) {
         }
     };
     int transaction_size;
-    std::vector<int> states(precision / 2, 3);
+    std::vector<char> states(precision / 2, 3);
     for (int step = 0;; step++) {
         // step 1: fill info, calculate next indicator
         transaction_size = states.size();
@@ -152,12 +153,6 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
     auto setB = [&](int offset, bool value) {
         assert(ack == offset);
         seqB[offset] = value;
-//        bool ref_bit = (*global_b)[offse  t];
-//        if (ref_bit != value) {
-//            auto str1 = std::to_string(ref_bit);
-//            auto str2 = std::to_string(value);
-//            throw std::runtime_error("fuck" + str1 + str2);
-//        }
         ++ack;
     };
 
@@ -190,20 +185,21 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
         setB(i, false);
     }
     std::vector<bool> bits;
+    bits.reserve(iter - META_SIZEOF);
     for (auto i: Range(META_SIZEOF, iter)) {
         // including paddings for the first time
         bits.push_back(getA(i));
     }
 
-    std::vector<int> states;
+    std::vector<char> states;
     while (iter < N) {
-        //        auto ref_bits = bitmap[iter];
         auto transaction_size = fetch_meta(iter);
         if (states.size()) {
-            bits = states2bits(states, transaction_size);
+            bits = states2bits(std::move(states), transaction_size);
         }
         iter += META_SIZEOF;
         states.clear();
+        states.reserve(transaction_size);
         for (auto i: Range(0, transaction_size)) {
             auto dst_index = iter + i;
             bool bitB = bits[i];
@@ -231,10 +227,9 @@ int wordload() {
         expected.push_back(bit);
     }
     auto[a, b] = generate_a(N, expected);
-//    global_b = &b;
     auto vb = verify_b(N, a, expected);
 
-    std::vector<int> statistics(4, 0);
+    std::array<int, 4> statistics = {};
     if (b != vb) {
         throw std::runtime_error("fuck");
     }
@@ -253,9 +248,7 @@ int wordload() {
 }
 
 
-int main() {
-    wordload();
-    return 0;
+void test_conversion() {
     std::default_random_engine e(42);
     int N = precision / 2;
     for (int step = 0; step < 1000; ++step) {
@@ -268,6 +261,12 @@ int main() {
         auto bits = states2bits(states, N);
         assert(bits == expected);
     }
+};
+
+int main() {
+//    test_conversion();
+    wordload();
+    return 0;
 }
 
 
