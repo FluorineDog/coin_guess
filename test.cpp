@@ -12,6 +12,8 @@ constexpr int precision = 10000;
 constexpr int META_SIZEOF = 16;
 const mpf_class Alpha = mpf_class(Alpha_Up, precision) / mpf_class(Alpha_Down, precision);
 const mpf_class Beta = 1 - 3 * Alpha;
+const mpf_class revAlpha = 1 / Alpha;
+const mpf_class revBeta = 1 / Beta;
 
 using SeqType = std::vector<bool>;
 const auto logAlpha = -log2f128(Alpha.get_d());
@@ -40,17 +42,17 @@ std::vector<char> bits2states(const std::vector<bool> &bits) {
     states.clear();
     // states is big endian
     while (entropy < bits.size() + 1) {
-        int multiple = mpf_class(indicator / Alpha).get_ui();
+        auto cache = mpf_class(indicator * revAlpha);
+        int multiple = cache.get_ui();
         if (multiple < 3) {
             states.push_back(multiple);
-            indicator -= multiple * Alpha;
-            indicator /= Alpha;
+            indicator = cache - multiple;
             entropy += logAlpha;
             statistics[multiple]++;
         } else {
             states.push_back(3);
             indicator -= 3 * Alpha;
-            indicator /= Beta;
+            indicator *= revBeta;
             entropy += logBeta;
             statistics[3]++;
         }
