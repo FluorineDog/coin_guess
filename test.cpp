@@ -67,8 +67,8 @@ std::vector<bool> states2bits(std::vector<char> states, int transaction_size) {
     // states is little endian
     for (auto x: states) {
         if (x < 3) {
+            indicator += x;
             indicator *= Alpha;
-            indicator += x * Alpha;
         } else {
             indicator *= Beta;
             indicator += 3 * Alpha;
