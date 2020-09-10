@@ -6,10 +6,10 @@
 
 using namespace doglib::common;
 
-constexpr int64_t Alpha_Up = 120;
+constexpr int64_t Alpha_Up = 119;
 constexpr int64_t Alpha_Down = 1889;
 constexpr int precision = 10000;
-constexpr int META_SIZEOF = 30;
+constexpr int META_SIZEOF = 16;
 const mpf_class Alpha = mpf_class(Alpha_Up, precision) / mpf_class(Alpha_Down, precision);
 const mpf_class Beta = 1 - 3 * Alpha;
 
@@ -19,21 +19,21 @@ const auto logBeta = -log2f128(Beta.get_d());
 
 std::map<int, int> meta_map;
 
-std::map<int, std::vector<bool>> bitmap;
-SeqType *global_b;
+//std::map<int, std::vector<bool>> bitmap;
+//SeqType *global_b;
 using std::vector;
 
 std::vector<bool> states2bits(std::vector<int> states, int transaction_size);
 
-std::vector<int> bits2states(const std::vector<bool>& bits) {
+std::vector<int> bits2states(const std::vector<bool> &bits) {
     std::vector<int> states;
     auto indicator = mpf_class(0, precision);
     // bits is little endian
-    for(auto bit: bits) {
+    for (auto bit: bits) {
         indicator += bit;
         indicator /= 2;
     }
-    std::cout << "put" <<  indicator.get_d() << std::endl;
+    std::cout << "put" << bits.size() << "-" << indicator.get_d() << std::endl;
     // step3: calculate next states
     std::array<int, 4> statistics = {};
     _Float128 entropy = 0;
@@ -72,7 +72,7 @@ std::vector<bool> states2bits(std::vector<int> states, int transaction_size) {
             indicator += 3 * Alpha;
         }
     }
-    std::cout <<  "fetch"  << indicator.get_d() << std::endl;
+    std::cout << "fetch" << states.size() << "-" << indicator.get_d() << std::endl;
     std::vector<bool> bits;
     for (auto i: Range(0, transaction_size)) {
         indicator *= 2;
@@ -99,7 +99,7 @@ std::pair<SeqType, SeqType> generate_a(int N, const SeqType &seq_ans) {
         }
     };
     int transaction_size;
-    std::vector<int> states(4096, 3);
+    std::vector<int> states(precision / 2, 3);
     for (int step = 0;; step++) {
         // step 1: fill info, calculate next indicator
         transaction_size = states.size();
@@ -110,8 +110,8 @@ std::pair<SeqType, SeqType> generate_a(int N, const SeqType &seq_ans) {
             auto index = N + i;
             auto state = states[i];
             auto bit_ans = seq_ans[index];
-            auto bitA = !(state % 2) ^ bit_ans;
-            auto bitB = !(state / 2) ^ bit_ans;
+            auto bitA = !(state % 2) ^bit_ans;
+            auto bitB = !(state / 2) ^bit_ans;
             seqA[index] = bitA;
             seqB[index] = bitB;
             bits.push_back(bitB);
@@ -152,13 +152,12 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
     auto setB = [&](int offset, bool value) {
         assert(ack == offset);
         seqB[offset] = value;
-        bool ref_bit = (*global_b)[offset];
-
-        if(ref_bit != value) {
-            auto str1 = std::to_string(ref_bit);
-            auto str2 = std::to_string(value);
-            throw std::runtime_error("fuck" + str1 + str2);
-        }
+//        bool ref_bit = (*global_b)[offse  t];
+//        if (ref_bit != value) {
+//            auto str1 = std::to_string(ref_bit);
+//            auto str2 = std::to_string(value);
+//            throw std::runtime_error("fuck" + str1 + str2);
+//        }
         ++ack;
     };
 
@@ -198,9 +197,9 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
 
     std::vector<int> states;
     while (iter < N) {
-        auto ref_bits = bitmap[iter];
+        //        auto ref_bits = bitmap[iter];
         auto transaction_size = fetch_meta(iter);
-        if(states.size()) {
+        if (states.size()) {
             bits = states2bits(states, transaction_size);
         }
         iter += META_SIZEOF;
@@ -232,26 +231,26 @@ int wordload() {
         expected.push_back(bit);
     }
     auto[a, b] = generate_a(N, expected);
-    global_b = &b;
+//    global_b = &b;
     auto vb = verify_b(N, a, expected);
 
     std::vector<int> statistics(4, 0);
-    if(b != vb) {
+    if (b != vb) {
         throw std::runtime_error("fuck");
     }
-    for(auto i: Range(N)) {
+    for (auto i: Range(N)) {
         auto a_yes = expected[i] == a[i];
         auto b_yes = expected[i] == b[i];
         auto state = a_yes + b_yes * 2;
         statistics[state]++;
     }
 
-    for(auto i: Range(4)) {
+    for (auto i: Range(0, 4)) {
         double count = statistics[i];
         std::cout << "state " << i << "->" << count << "->" << count / N << std::endl;
     }
+    return 0;
 }
-
 
 
 int main() {
@@ -259,7 +258,7 @@ int main() {
     return 0;
     std::default_random_engine e(42);
     int N = precision / 2;
-    for(int step = 0; step < 1000; ++step) {
+    for (int step = 0; step < 1000; ++step) {
         SeqType expected;
         for (auto i: Range(0, N)) {
             bool bit = e() % 2;
