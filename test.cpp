@@ -18,6 +18,8 @@ const auto logAlpha = -log2f128(Alpha.get_d());
 const auto logBeta = -log2f128(Beta.get_d());
 
 std::map<int, int> meta_map;
+
+std::map<int, std::vector<bool>> bitmap;
 SeqType *global_b;
 using std::vector;
 
@@ -108,8 +110,8 @@ std::pair<SeqType, SeqType> generate_a(int N, const SeqType &seq_ans) {
             auto index = N + i;
             auto state = states[i];
             auto bit_ans = seq_ans[index];
-            auto bitA = !(state % 2) ^bit_ans;
-            auto bitB = !(state / 2) ^bit_ans;
+            auto bitA = !(state % 2) ^ bit_ans;
+            auto bitB = !(state / 2) ^ bit_ans;
             seqA[index] = bitA;
             seqB[index] = bitB;
             bits.push_back(bitB);
@@ -120,7 +122,6 @@ std::pair<SeqType, SeqType> generate_a(int N, const SeqType &seq_ans) {
         fill_meta(N, transaction_size);
 
         assert(bits.size() == transaction_size);
-        std::cout << ">>" << N << ">>";
         states = bits2states(bits);
 
         if (N <= 2 * states.size() + 2 * META_SIZEOF) {
@@ -195,11 +196,15 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
         bits.push_back(getA(i));
     }
 
+    std::vector<int> states;
     while (iter < N) {
+        auto ref_bits = bitmap[iter];
         auto transaction_size = fetch_meta(iter);
-        std::cout << ">>" << iter << ">>";
+        if(states.size()) {
+            bits = states2bits(states, transaction_size);
+        }
         iter += META_SIZEOF;
-        std::vector<int> states;
+        states.clear();
         for (auto i: Range(0, transaction_size)) {
             auto dst_index = iter + i;
             bool bitB = bits[i];
@@ -211,7 +216,6 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
             states.push_back(3 - bitA - bitB * 2);
         }
         iter += transaction_size;
-        bits = states2bits(states, transaction_size);
     }
     assert(iter == N);
     assert(ack == N);
@@ -222,7 +226,7 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
 int wordload() {
     SeqType expected;
     std::default_random_engine e(42);
-    int N = 1 << 15;
+    int N = 1 << 20;
     for (auto i: Range(0, N)) {
         bool bit = e() % 2;
         expected.push_back(bit);
@@ -241,6 +245,7 @@ int wordload() {
         auto state = a_yes + b_yes * 2;
         statistics[state]++;
     }
+
     for(auto i: Range(4)) {
         double count = statistics[i];
         std::cout << "state " << i << "->" << count << "->" << count / N << std::endl;
