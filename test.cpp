@@ -6,11 +6,18 @@
 
 using namespace doglib::common;
 
+// TODO: modify these two parameters
+constexpr int N = 1 << 22; // 4 * 1024 * 1024
+constexpr int initial_transaction_size = 10000;
+
+// transaction size should be much smaller than this
+constexpr int precision = initial_transaction_size * 2;
+
+
 constexpr int64_t Alpha_Up = 119;
 constexpr int64_t Alpha_Down = 1889;
-constexpr int precision = 10000;
 constexpr int META_SIZEOF = 16;
-const mpf_class Alpha = mpf_class(Alpha_Up, precision) / mpf_class(Alpha_Down, precision);
+const mpf_class Alpha = mpf_class(Alpha_Up, precision) / mpf_class(Alpha_Down, precision) + 0.0001;
 const mpf_class Beta = 1 - 3 * Alpha;
 const mpf_class revAlpha = 1 / Alpha;
 const mpf_class revBeta = 1 / Beta;
@@ -102,7 +109,7 @@ std::pair<SeqType, SeqType> generate_a(int N, const SeqType &seq_ans) {
         }
     };
     int transaction_size;
-    std::vector<char> states(precision / 2, 3);
+    std::vector<char> states(initial_transaction_size, 3);
     for (int step = 0;; step++) {
         // step 1: fill info, calculate next indicator
         transaction_size = states.size();
@@ -223,7 +230,6 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
 int wordload() {
     SeqType expected;
     std::default_random_engine e(42);
-    int N = 1 << 20;
     for (auto i: Range(0, N)) {
         bool bit = e() % 2;
         expected.push_back(bit);
