@@ -8,7 +8,7 @@ using namespace doglib::common;
 
 // TODO: modify these two parameters
 constexpr int N = 1 << 22; // 4 * 1024 * 1024
-constexpr int initial_transaction_size = 10000;
+constexpr int initial_transaction_size = 10000; // NOTE: this is L_0
 
 // transaction size should be much smaller than this
 constexpr int precision = initial_transaction_size * 2;
@@ -18,7 +18,7 @@ constexpr int64_t Alpha_Up = 119;
 constexpr int64_t Alpha_Down = 1889;
 constexpr int META_SIZEOF = 16;
 const mpf_class Alpha = mpf_class(Alpha_Up, precision) / mpf_class(Alpha_Down, precision) + 0.0001;
-const mpf_class Beta = 1 - 3 * Alpha;
+const mpf_class Beta = 1 - 3 * Alpha;  // NOTE: this \lambda - \epsilon, approximately 0.810
 const mpf_class revAlpha = 1 / Alpha;
 const mpf_class revBeta = 1 / Beta;
 
@@ -26,6 +26,7 @@ using SeqType = std::vector<bool>;
 const auto logAlpha = -log2f128(Alpha.get_d());
 const auto logBeta = -log2f128(Beta.get_d());
 
+// this is for debugging
 std::map<int, int> meta_map;
 
 //std::map<int, std::vector<bool>> bitmap;
@@ -42,7 +43,7 @@ std::vector<char> bits2states(const std::vector<bool> &bits) {
         indicator += bit;
         indicator /= 2;
     }
-    std::cout << "put" << bits.size() << "-" << indicator.get_d() << std::endl;
+    // std::cout << "put" << bits.size() << "-" << indicator.get_d() << std::endl;
     // step3: calculate next states
     std::array<int, 4> statistics = {};
     _Float128 entropy = 0;
@@ -81,7 +82,7 @@ std::vector<bool> states2bits(std::vector<char> states, int transaction_size) {
             indicator += 3 * Alpha;
         }
     }
-    std::cout << "fetch" << states.size() << "-" << indicator.get_d() << std::endl;
+    // std::cout << "fetch" << states.size() << "-" << indicator.get_d() << std::endl;
     std::vector<bool> bits;
     bits.reserve(transaction_size);
     for (auto i: Range(0, transaction_size)) {
@@ -96,6 +97,7 @@ std::vector<bool> states2bits(std::vector<char> states, int transaction_size) {
 }
 
 std::pair<SeqType, SeqType> generate_a(int N, const SeqType &seq_ans) {
+    auto RawN = N;
     SeqType seqA(N);
     SeqType seqB(N);
     auto fill_meta = [&seqA, &seqB](int offset, int meta) {
@@ -116,6 +118,7 @@ std::pair<SeqType, SeqType> generate_a(int N, const SeqType &seq_ans) {
         vector<bool> bits;
 
         N -= transaction_size;
+        std::cout << "Generation Progress: " << (RawN - N) * 100.0 / RawN  << "%" << std::endl;
         for (auto i: Range(states.size())) {
             auto index = N + i;
             auto state = states[i];
@@ -184,7 +187,6 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
             auto bit = getA(index);
             n |= bit << i;
         }
-        auto expected = meta_map[offset];
         assert(meta_map[offset] == n);
         return n;
     };
@@ -203,6 +205,7 @@ SeqType verify_b(int N, const SeqType &seqA, const SeqType &seq_std) {
     std::vector<char> states;
     while (iter < N) {
         auto transaction_size = fetch_meta(iter);
+        std::cout << "Verification Progress: " << (iter) * 100.0 / N  << "%" << std::endl;
         if (states.size()) {
             bits = states2bits(std::move(states), transaction_size);
         }
@@ -249,7 +252,7 @@ int wordload() {
     }
 
     for (auto i: Range(0, 4)) {
-        double count = statistics[i];
+        auto count = statistics[i];
         std::cout << "state " << i << "->" << count << "->" << count / N << std::endl;
     }
     return 0;
